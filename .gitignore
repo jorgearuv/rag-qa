@@ -1,5 +1,7 @@
 # Python
+**/__pycache__/
 backend/__pycache__/
+backend/**/__pycache__/
 backend/*.py[cod]
 backend/*$py.class
 backend/*.so
@@ -19,7 +21,12 @@ backend/var/
 backend/*.egg-info/
 backend/.installed.cfg
 backend/*.egg
-backend/.env
+
+# Environment variables
+.env
+**/.env
+.env.*
+!.env.example
 
 # Node
 node_modules/
