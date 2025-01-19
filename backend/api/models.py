@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.postgres.fields import ArrayField
+from pgvector.django import VectorField
 
 # Create your models here.
 
@@ -19,7 +19,7 @@ class DocumentChunk(models.Model):
     """
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='chunks')
     content = models.TextField()
-    embedding = ArrayField(models.FloatField(), size=1536)  # OpenAI embedding size
+    embedding = VectorField(dimensions=1536)  # OpenAI embedding size
     relevance = models.FloatField(null=True)  # Used to store similarity scores during retrieval
 
     def __str__(self):

@@ -1,14 +1,28 @@
-django==5.0.1
+# Django and REST framework
+Django==5.0.1
 djangorestframework==3.14.0
 django-cors-headers==4.3.1
+drf-spectacular==0.27.0
+
+# Database
 psycopg2-binary==2.9.9
 python-multipart==0.0.6
 requests==2.31.0
-openai==0.28.0
-python-dotenv==1.0.0
 pgvector==0.2.4
+
+# Document processing
 PyPDF2==3.0.1
-numpy==1.26.3
+python-dotenv==1.0.0
+
+# OpenAI and LangChain
+openai>=1.6.1
+langchain-core>=0.1.1
+langchain-community>=0.0.10
+langchain-openai>=0.0.2
+
+# Server
 gunicorn==21.2.0
-langchain==0.0.325
-tiktoken==0.5.2
+
+# Utils
+numpy==1.26.3
+

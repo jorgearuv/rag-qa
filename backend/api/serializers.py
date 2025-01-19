@@ -18,3 +18,18 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ['id', 'content', 'is_user', 'timestamp']
+
+class ChatRequestSerializer(serializers.Serializer):
+    message = serializers.CharField(required=True)
+    document_id = serializers.IntegerField(required=True)
+
+class ChatResponseSerializer(serializers.Serializer):
+    answer = serializers.CharField()
+    relevant_chunks = serializers.ListField(
+        child=serializers.DictField(
+            child=serializers.CharField()
+        )
+    )
+
+class HealthCheckSerializer(serializers.Serializer):
+    status = serializers.CharField()

@@ -1,47 +1,58 @@
-# RAG-based Q&A Chatbot
+# Document Q&A with RAG
 
-A document analysis chatbot that uses RAG (Retrieval-Augmented Generation) to
-answer questions based on uploaded documents.
+A document question-answering application that uses Retrieval-Augmented
+Generation (RAG) to provide accurate answers based on uploaded documents.
 
 ## Features
 
-- 📄 Upload and process PDF and TXT documents
-- 💬 Chat interface for document-specific questions
-- 🔍 Semantic search using OpenAI embeddings
-- 🗄️ Vector similarity search with pgvector
-- 🚀 Modern React frontend with real-time updates
+- 📄 Upload PDF and TXT documents
+- 💬 Ask questions about uploaded documents
+- 🔍 Get AI-powered answers with relevant source passages
+- 🎨 Modern and responsive UI with animations
+- 🗄️ Vector similarity search for accurate retrieval
+- 🚀 Real-time chat interface with source highlighting
+
+## Tech Stack
+
+- **Frontend**: React, TypeScript, Tailwind CSS, Framer Motion
+- **Backend**: Django, REST Framework
+- **Database**: PostgreSQL with pgvector extension
+- **AI**: OpenAI API (GPT-3.5/4 and text-embedding-ada-002)
+- **Containerization**: Docker & Docker Compose
 
 ## Prerequisites
 
 - Docker and Docker Compose
 - OpenAI API Key
 
-## Quick Start
+## Setup
 
 1. Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:jorgearuv/rag-qa.git
 cd rag-qa
 ```
 
-2. Create a `.env` file in the root directory:
+2. Copy the example environment file:
 
 ```bash
-OPENAI_API_KEY=your_api_key_here
-DJANGO_SECRET_KEY=your_django_secret_key_here
+cp .env.example .env
 ```
 
-3. Start the application:
+3. Edit the `.env` file and add your OpenAI API key
+
+4. Start the application:
 
 ```bash
 docker compose up --build
 ```
 
-The services will be available at:
+5. Access the application:
 
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
 
 ## Development
 
@@ -49,39 +60,69 @@ The services will be available at:
 
 ```
 .
-├── backend/             # Django backend
-│   ├── app/            # Django application
-│   │   ├── api/        # REST API endpoints
-│   │   ├── core/       # Core functionality
-│   │   └── settings/   # Django settings
-│   └── Dockerfile
-├── frontend/           # React frontend
-│   ├── src/           # Source code
-│   └── Dockerfile
-└── docker-compose.yml  # Docker services configuration
+├── backend/                 # Django backend
+│   ├── api/                # Django application
+│   │   ├── migrations/     # Database migrations
+│   │   ├── __init__.py
+│   │   ├── admin.py       # Admin interface
+│   │   ├── apps.py        # App configuration
+│   │   ├── models.py      # Database models
+│   │   ├── serializers.py # API serializers
+│   │   ├── tests.py       # Unit tests
+│   │   ├── utils.py       # Helper functions
+│   │   └── views.py       # API endpoints
+│   ├── ragqa/             # Project settings
+│   │   ├── __init__.py
+│   │   ├── settings.py    # Django settings
+│   │   ├── urls.py        # URL routing
+│   │   └── wsgi.py        # WSGI config
+│   ├── Dockerfile         # Backend container config
+│   ├── manage.py          # Django CLI
+│   ├── requirements.txt   # Python dependencies
+│   └── start.sh          # Container startup script
+├── frontend/              # React frontend
+│   ├── src/              # Source code
+│   │   ├── components/   # React components
+│   │   │   ├── ChatInterface.tsx
+│   │   │   └── DocumentList.tsx
+│   │   ├── constants/    # Configuration
+│   │   │   └── config.ts
+│   │   ├── lib/         # Utilities
+│   │   │   └── utils.ts
+│   │   ├── App.tsx      # Main app component
+│   │   ├── index.css    # Global styles
+│   │   ├── main.tsx     # Entry point
+│   │   └── vite-env.d.ts # TypeScript declarations
+│   ├── Dockerfile        # Frontend container config
+│   ├── index.html        # HTML template
+│   ├── package.json      # Node.js dependencies
+│   ├── postcss.config.js # PostCSS config
+│   ├── tailwind.config.js # Tailwind CSS config
+│   ├── tsconfig.json     # TypeScript config
+│   ├── tsconfig.app.json # App TS config
+│   └── tsconfig.node.json # Node TS config
+├── .env.example          # Environment variables template
+├── .gitignore           # Git ignore rules
+├── docker-compose.yml    # Container orchestration
+└── README.md            # Project documentation
 ```
 
-### Database Management
+- Backend code is in the `backend/` directory
 
-- The database is automatically initialized on first run
-- Django migrations are applied automatically on startup
-- To reset the database:
+  - Django REST API endpoints in `api/views.py`
+  - Database models in `api/models.py`
+  - Document processing in `api/utils.py`
 
-```bash
-docker compose down
-docker volume rm rag-qa_postgres_data
-docker compose up --build
-```
+- Database
+  - PostgreSQL with pgvector extension for similarity search
+  - Automatic initialization and migrations on startup
+  - Data persisted in Docker volume `postgres_data`
 
 ### API Documentation
 
 API documentation is available via Django REST Swagger at
 http://localhost:8000/api/docs/
 
-## Technologies Used
+## License
 
-- **Frontend**: React, TypeScript, Tailwind CSS
-- **Backend**: Django, Django REST Framework
-- **Database**: PostgreSQL with pgvector
-- **AI**: OpenAI API (embeddings and chat)
-- **Infrastructure**: Docker, Docker Compose
+MIT

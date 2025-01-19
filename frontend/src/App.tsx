@@ -8,7 +8,7 @@ import ChatInterface from './components/ChatInterface'
 import DocumentList from './components/DocumentList'
 
 const DESKTOP_BREAKPOINT = 1024
-const SELECTED_DOCUMENT_KEY = 'selectedDocumentId'
+const SELECTED_DOCUMENT_KEY = 'selectedDocument'
 
 interface Document {
   id: number
@@ -19,7 +19,10 @@ interface Document {
 function App() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(
-    null,
+    () => {
+      const savedDoc = localStorage.getItem(SELECTED_DOCUMENT_KEY)
+      return savedDoc ? JSON.parse(savedDoc) : null
+    },
   )
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -36,14 +39,16 @@ function App() {
         )
         setDocuments(sortedDocuments)
 
-        // Restore selected document if exists
-        const savedDocId = localStorage.getItem(SELECTED_DOCUMENT_KEY)
-        if (savedDocId) {
-          const savedDoc = sortedDocuments.find(
-            (doc: Document) => doc.id === parseInt(savedDocId),
+        // Update selected document with fresh data if it exists
+        if (selectedDocument) {
+          const freshDoc = sortedDocuments.find(
+            (doc: Document) => doc.id === selectedDocument.id,
           )
-          if (savedDoc) {
-            setSelectedDocument(savedDoc)
+          if (freshDoc) {
+            setSelectedDocument(freshDoc)
+          } else {
+            setSelectedDocument(null)
+            localStorage.removeItem(SELECTED_DOCUMENT_KEY)
           }
         }
       } catch (error) {
@@ -52,7 +57,7 @@ function App() {
     }
 
     fetchDocuments()
-  }, [])
+  }, [selectedDocument?.id])
 
   const handleFileUpload = async (file: File) => {
     setIsUploading(true)
@@ -163,7 +168,7 @@ function App() {
                   if (doc) {
                     localStorage.setItem(
                       SELECTED_DOCUMENT_KEY,
-                      doc.id.toString(),
+                      JSON.stringify(doc),
                     )
                   } else {
                     localStorage.removeItem(SELECTED_DOCUMENT_KEY)

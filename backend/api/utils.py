@@ -1,10 +1,10 @@
 import os
-from typing import List
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.chat_models import ChatOpenAI
+from typing import List, Optional
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document as LangChainDocument
-from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from io import BytesIO
 import PyPDF2
 from pgvector.django import CosineDistance, VectorField
@@ -16,15 +16,14 @@ from django.db.models import FloatField
 from django.db.models import F
 from django.db.models.expressions import RawSQL
 
-# Initialize LangChain components
+# Initialize OpenAI components
 embeddings = OpenAIEmbeddings(
-    openai_api_key=os.getenv("OPENAI_API_KEY")
+    model="text-embedding-ada-002",
 )
 
 llm = ChatOpenAI(
-    openai_api_key=os.getenv("OPENAI_API_KEY"),
-    model_name="gpt-3.5-turbo",
-    temperature=0.7
+    model="gpt-3.5-turbo",
+    temperature=0.7,
 )
 
 text_splitter = RecursiveCharacterTextSplitter(
@@ -34,27 +33,29 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 
 def extract_text_from_pdf(content: bytes) -> str:
+    """Extract text from PDF content."""
     pdf_file = BytesIO(content)
-    try:
-        reader = PyPDF2.PdfReader(pdf_file)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() + "\n\n"
-        return text
-    except Exception as e:
-        raise Exception(f"Error extracting text from PDF: {str(e)}")
+    pdf_reader = PyPDF2.PdfReader(pdf_file)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() + "\n"
+    return text
 
 def extract_text_from_file(content: bytes, filename: str) -> str:
+    """Extract text from file based on its extension."""
     if filename.lower().endswith('.pdf'):
         return extract_text_from_pdf(content)
     elif filename.lower().endswith('.txt'):
         try:
             return content.decode('utf-8')
         except UnicodeDecodeError:
-            # Try alternative encoding if UTF-8 fails
-            return content.decode('latin-1')
+            # Try different encodings if UTF-8 fails
+            try:
+                return content.decode('latin-1')
+            except UnicodeDecodeError:
+                return content.decode('cp1252')
     else:
-        raise Exception("Unsupported file type. Only PDF and TXT files are supported.")
+        raise ValueError("Unsupported file type. Only PDF and TXT files are supported.")
 
 def process_document(document_id: int, content: bytes, filename: str):
     # Extract text based on file type
@@ -77,69 +78,59 @@ def process_document(document_id: int, content: bytes, filename: str):
             embedding=embedding
         )
 
-def get_relevant_chunks(document_id: int, query: str, limit: int = 3):
-    # Get query embedding using LangChain
+def get_relevant_chunks(query: str, document_id: int, limit: int = 3) -> List[DocumentChunk]:
+    """Get relevant document chunks for a query using vector similarity."""
+    # Get query embedding
     query_embedding = embeddings.embed_query(query)
     
-    # Convert embedding to string with proper format for PostgreSQL vector comparison
+    # Convert embedding to string for SQL
     embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
     
-    # Get chunks using raw SQL for cosine distance
+    # Get chunks ordered by similarity using pgvector's <=> operator
     chunks = DocumentChunk.objects.filter(document_id=document_id)\
         .annotate(
             similarity_score=RawSQL(
-                f"1 - (embedding::vector <=> '{embedding_str}'::vector)", 
-                []
+                "1 - (embedding::vector <=> %s::vector)", 
+                [embedding_str]
             )
         )\
         .order_by('-similarity_score')[:limit]
     
-    # Set relevance field from similarity score
+    # Add relevance scores to chunks
     for chunk in chunks:
         chunk.relevance = float(chunk.similarity_score)
     
     return chunks
 
-def get_chat_response(query: str, relevant_chunks: List[DocumentChunk]) -> str:
-    if relevant_chunks:
-        context = "\n\n".join([chunk.content for chunk in relevant_chunks])
-        
-        # Create LangChain prompt template
-        system_template = "You are a helpful assistant that answers questions based on document content. Be concise and accurate."
-        human_template = """Based on the following context from the document:
+def get_chat_response(message: str, chunks: Optional[List[DocumentChunk]] = None) -> str:
+    """Generate a response using the chat model."""
+    if not chunks:
+        # If no context is provided, respond accordingly
+        return "I couldn't find any relevant information in the document to answer your question. Could you please rephrase your question or ask something else about the document?"
+
+    # Create context from chunks
+    context = "\n\n".join(f"Excerpt {i+1}:\n{chunk.content}" for i, chunk in enumerate(chunks))
+    
+    # Create prompt template
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """You are a helpful assistant that answers questions based on the provided document excerpts. 
+        Use the information from the excerpts to provide accurate and relevant answers.
+        If the excerpts don't contain enough information to answer the question fully, acknowledge this and answer with what you can find.
+        Always maintain a professional and helpful tone."""),
+        ("user", """Here are some relevant excerpts from the document:
 
 {context}
 
-Answer this question: {query}
-
-If the answer cannot be derived from the context, say so."""
-    else:
-        system_template = "You are a helpful assistant that answers questions based on document content. Be concise and accurate."
-        human_template = """The question is: {query}
-
-I could not find relevant information in the document to answer this question. 
-Please let me know that you cannot answer based on the document content, but provide a general response if possible."""
-
-    try:
-        # Create messages
-        system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
-        human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
-        
-        # Create chat prompt
-        chat_prompt = ChatPromptTemplate.from_messages([
-            system_message_prompt,
-            human_message_prompt
-        ])
-        
-        # Format prompt with variables
-        messages = chat_prompt.format_prompt(
-            context=context if relevant_chunks else "",
-            query=query
-        ).to_messages()
-        
-        # Get response from LLM
-        response = llm(messages)
-        return response.content
-        
-    except Exception as e:
-        return f"Sorry, I encountered an error: {str(e)}" 
+Question: {question}""")
+    ])
+    
+    # Create chain
+    chain = prompt | llm | StrOutputParser()
+    
+    # Generate response
+    response = chain.invoke({
+        "context": context,
+        "question": message
+    })
+    
+    return response 

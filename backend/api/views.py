@@ -6,7 +6,14 @@ from django.conf import settings
 import os
 
 from .models import Document, DocumentChunk, Message
-from .serializers import DocumentSerializer, QuestionSerializer, MessageSerializer
+from .serializers import (
+    DocumentSerializer, 
+    QuestionSerializer, 
+    MessageSerializer,
+    ChatRequestSerializer,
+    ChatResponseSerializer,
+    HealthCheckSerializer
+)
 from .utils import process_document, get_relevant_chunks, get_chat_response
 
 @api_view(['GET'])
@@ -14,7 +21,8 @@ def health_check(request):
     """
     Health check endpoint to verify the API is running correctly
     """
-    return Response({"status": "healthy"}, status=status.HTTP_200_OK)
+    serializer = HealthCheckSerializer({"status": "healthy"})
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 # Create your views here.
 
@@ -56,20 +64,19 @@ def chat(request):
     """
     Process chat messages and return AI responses with relevant document chunks
     """
-    message = request.data.get('message')
-    document_id = request.data.get('document_id')
+    # Validate request data
+    request_serializer = ChatRequestSerializer(data=request.data)
+    if not request_serializer.is_valid():
+        return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    if not message or not document_id:
-        return Response(
-            {"detail": "Message and document_id are required"}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
+    message = request_serializer.validated_data['message']
+    document_id = request_serializer.validated_data['document_id']
     
     document = get_object_or_404(Document, id=document_id)
     
     try:
         # Get relevant chunks
-        relevant_chunks = get_relevant_chunks(document.id, message)
+        relevant_chunks = get_relevant_chunks(message, document_id)
         
         # Get model response
         answer = get_chat_response(message, relevant_chunks)
@@ -86,13 +93,18 @@ def chat(request):
             document=document
         )
         
-        return Response({
+        # Prepare and validate response
+        response_data = {
             "answer": answer,
             "relevant_chunks": [
                 {"text": chunk.content, "relevance": chunk.relevance}
                 for chunk in relevant_chunks
             ]
-        })
+        }
+        response_serializer = ChatResponseSerializer(data=response_data)
+        response_serializer.is_valid(raise_exception=True)
+        
+        return Response(response_serializer.data)
     except Exception as e:
         return Response(
             {"detail": str(e)}, 

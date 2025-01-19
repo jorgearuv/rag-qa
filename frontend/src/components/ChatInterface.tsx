@@ -35,19 +35,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedDocument }) => {
   const scrollToBottom = useCallback(() => {
     if (!messagesEndRef.current) return
     const container = messagesEndRef.current
-    const shouldAutoScroll =
-      container.scrollHeight - container.scrollTop <=
-      container.clientHeight + 100
-    if (shouldAutoScroll) {
-      container.scrollIntoView({ behavior: 'smooth' })
-    }
+    container.scrollTop = container.scrollHeight
   }, [])
 
   useEffect(() => {
     if (messages.length > 0) {
-      scrollToBottom()
+      // Force scroll to bottom with a small delay to ensure content is rendered
+      setTimeout(() => {
+        scrollToBottom()
+      }, 100)
     }
   }, [messages, scrollToBottom])
+
+  useEffect(() => {
+    if (selectedDocument && !isLoading) {
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+    }
+  }, [selectedDocument, isLoading])
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -69,6 +75,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedDocument }) => {
           timestamp: new Date(msg.timestamp),
         }))
         setMessages(formattedMessages)
+        // Force scroll to bottom after messages are loaded
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollTop =
+              messagesEndRef.current.scrollHeight
+          }
+        }, 100)
       } catch (error) {
         console.error('Error fetching messages:', error)
       } finally {
@@ -119,7 +132,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedDocument }) => {
       setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
-      inputRef.current?.focus()
+      // Ensure focus is restored after a short delay to allow for state updates
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
     }
   }
 

@@ -20,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from api.views import DocumentViewSet, chat, health_check
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 router = DefaultRouter()
 router.register(r'documents', DocumentViewSet, basename='document')
@@ -29,4 +30,9 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/chat/', chat, name='chat'),
     path('api/health/', health_check, name='health_check'),
+    
+    # OpenAPI 3 documentation with Swagger UI
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
