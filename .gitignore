@@ -1,16 +1,16 @@
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/*.so
+backend/.Python
+backend/env/
+backend/build/
+backend/develop-eggs/
+backend/dist/
+backend/downloads/
+backend/eggs/
+backend/.eggs/
 backend/lib/
 backend/lib64/
 backend/parts/
@@ -18,8 +18,8 @@ backend/sdist/
 backend/var/
 backend/*.egg-info/
 backend/.installed.cfg
-*.egg
-.env
+backend/*.egg
+backend/.env
 
 # Node
 node_modules/
